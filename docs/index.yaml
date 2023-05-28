@@ -1,0 +1,376 @@
+openapi: '3.0.0'
+info:
+  version: '1.0.0'
+  title: 'Arch lab API'
+  description: 'Описание API сервера сайта заказа услуг'
+paths:
+  /auth/sign/up:
+    servers: 
+      - url: http://localhost:8081/
+    post:
+      summary: User creation
+      requestBody:
+        description: New user fields
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/user_create'
+        
+      responses:
+        201:
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user_id'
+        500:
+          $ref: '#/components/responses/InternalServerException'
+  /auth/sign/in:
+    servers: 
+      - url: http://localhost:8081/
+    get:
+      summary: Authorization
+      responses:
+        200:
+          description: Session token created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/token'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          $ref: '#/components/responses/InternalServerException'
+      security: 
+        - basicAuth: []
+  
+  /auth/validate:
+    servers: 
+      - url: http://localhost:8081/
+    get:
+      summary: Session token validation
+      responses:
+        200:
+          description: Token is ok
+          content:
+            application/json:
+              schema:
+                properties:
+                  id:
+                    $ref: '#/components/schemas/user_id'
+                  login:
+                    type: string
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          $ref: '#/components/responses/InternalServerException'
+      security:
+        - bearerAuth: []
+
+  /user:
+    servers: 
+      - url: http://localhost:8082/
+    put:
+      summary: Edit user
+      requestBody:
+        description: New user fields
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/user'
+      responses:
+        200:
+          description: User updated
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          $ref: '#/components/responses/InternalServerException'
+        404:
+          description: User not found
+          $ref: '#/components/responses/NotFoundException'
+      security:
+        - bearerAuth: []
+    delete:
+      summary: Delete user by id
+      parameters:
+        - name: id
+          description: User id
+          in: query
+          schema:
+            $ref: '#/components/schemas/user_id'
+      responses:
+        200:
+          description: User deleted
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          $ref: '#/components/responses/InternalServerException'
+      security:
+        - bearerAuth: []
+  /user/search:
+    servers: 
+      - url: http://localhost:8082/
+    get:
+      summary: Search users
+      parameters:
+        - name: name
+          description: User name
+          in: query
+          schema:
+            type: string
+        - name: email
+          description: User email
+          in: query
+          schema:
+            type: string
+        - name: login
+          description: User login
+          in: query
+          schema:
+            type: string
+      responses:
+        200:
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/users'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          $ref: '#/components/responses/InternalServerException'
+      security:
+        - bearerAuth: []
+
+  /product:
+    servers: 
+      - url: http://localhost:8083/
+    post:
+      summary: Create new product
+      requestBody:
+        description: New product entity
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/product_create'
+      responses:
+        201:
+          description: New product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/product_id'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          $ref: '#/components/responses/InternalServerException'
+      security:
+        - bearerAuth: []
+    put:
+      summary: Edit product
+      requestBody:
+        description: New product fields
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/product'
+      responses:
+        200:
+          description: New product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/product_id'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          $ref: '#/components/responses/InternalServerException'
+        404:
+          description: Product not found
+          $ref: '#/components/responses/NotFoundException'
+      security:
+        - bearerAuth: []
+    delete:
+      summary: Delete product by id
+      parameters:
+        - name: id
+          description: Product id
+          in: query
+          schema:
+            $ref: '#/components/schemas/product_id'
+      responses:
+        200:
+          description: Product delete
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          $ref: '#/components/responses/InternalServerException'
+      security:
+        - bearerAuth: []
+  /product/search:
+    servers: 
+      - url: http://localhost:8083/
+    get:
+      summary: Search products
+      parameters:
+        - name: id
+          description: product id
+          in: query
+          schema:
+            $ref: '#/components/schemas/product_id'
+        - name: name
+          description: Product name
+          in: query
+          schema:
+            type: string
+        - name: cost_min
+          description: Min product cost
+          in: query
+          schema:
+            type: integer
+        - name: cost_max
+          description: Max product cost
+          in: query
+          schema:
+            type: integer
+        - name: seller_id
+          description: Product seller id
+          in: query
+          schema:
+            $ref: '#/components/schemas/user_id'
+        - name: creation_date_start
+          description: Product creation date from
+          in: query
+          schema:
+            type: string
+        - name: creation_date_end
+          description: Product creation date to
+          in: query
+          schema:
+            type: string
+      responses:
+        200:
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/users'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          $ref: '#/components/responses/InternalServerException'
+        404:
+          description: User not found
+          $ref: '#/components/responses/NotFoundException'
+      security:
+        - bearerAuth: []
+
+components:
+  schemas:
+    token:
+      description: User session token
+      type: object
+      properties:
+        token:
+          type: string
+    user_id:
+      description: User unique id
+      type: integer
+    users:
+      type: array
+      items:
+        $ref: '#/components/schemas/user'
+    user:
+      description: User entity
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/user_id'
+        name:
+          type: string
+        email:
+          type: string
+        login:
+          type: string
+        deleted:
+          type: boolean
+    user_create:
+      description: Entity for creation user
+      type: object
+      required:
+        - name
+        - email
+        - login
+        - password
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        login:
+          type: string
+        password:
+          type: string
+    product_id:
+      description: Unique product id
+      type: integer
+    product_create:
+      description: new product entity
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    product:
+      description: Product entity
+      type: object
+      required:
+        - id
+        - name
+        - seller_id
+      properties:
+        id:
+          $ref: '#/components/schemas/product_id'
+        name:
+          type: string
+        description:
+          type: string
+        creation_date:
+          type: string
+        deleted:
+          type: boolean
+        seller_id:
+          $ref: '#/components/schemas/user_id'
+        seller:
+          $ref: '#/components/schemas/user'
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          description: Error message
+          type: string
+  responses:
+    UnauthorizedError:
+      description: Session token validation failed or bad user credits
+    InternalServerException:
+      description: Unexpected internal server exeption
+    NotFoundException:
+      description: Entity not found
+  securitySchemes:
+      basicAuth:     
+        type: http
+        scheme: basic
+      bearerAuth:
+        type: http
+        scheme: bearer
+        bearerFormat: JWT

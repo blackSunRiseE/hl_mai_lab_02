@@ -1,0 +1,187 @@
+version: '3.3'
+
+services:
+  db_node_01:
+    build:
+      context: mariadb
+      dockerfile: Dockerfile
+    container_name: db_node_01
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_LOGIN}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: '1'
+    command: >
+      --sql-mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+      --general-log=ON
+      --log-queries-not-using-indexes=ON
+    networks:
+      - arch-network
+    ports:
+      - 3360:${DB_PORT}
+    healthcheck:
+      test: "/usr/bin/mysql --host=db_node_01 --database=${DB_DATABASE} --user=${DB_LOGIN} --password=${DB_PASSWORD} --execute \"SHOW DATABASES;\""
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./mariadb/rollout/user:/docker-entrypoint-initdb.d
+      - db-node-01-data:/var/lib/mysql
+
+  db_node_02:
+    build:
+      context: mariadb
+      dockerfile: Dockerfile
+    container_name: db_node_02
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_LOGIN}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: '1'
+    command: >
+      --sql-mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+      --general-log=ON
+      --log-queries-not-using-indexes=ON
+    networks:
+      - arch-network
+    ports:
+      - 3361:${DB_PORT}
+    healthcheck:
+      test: "/usr/bin/mysql --host=db_node_02 --database=${DB_DATABASE} --user=${DB_LOGIN} --password=${DB_PASSWORD} --execute \"SHOW DATABASES;\""
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./mariadb/rollout/user:/docker-entrypoint-initdb.d
+      - db-node-02-data:/var/lib/mysql
+
+# sequences
+  db_node_03:
+    build:
+      context: mariadb
+      dockerfile: Dockerfile
+    container_name: db_node_03
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_LOGIN}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: '1'
+    command: >
+      --sql-mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+      --general-log=ON
+      --log-queries-not-using-indexes=ON
+    networks:
+      - arch-network
+    ports:
+      - 3362:${DB_PORT}
+    healthcheck:
+      test: "/usr/bin/mysql --host=db_node_03 --database=${DB_DATABASE} --user=${DB_LOGIN} --password=${DB_PASSWORD} --execute \"SHOW DATABASES;\""
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./mariadb/rollout/sequence:/docker-entrypoint-initdb.d
+      - db-node-03-data:/var/lib/mysql
+
+  proxysql:
+    build:
+      context: proxysql
+      dockerfile: Dockerfile
+    container_name: proxysql
+    # volumes:
+    #   - proxysql-data:/var/lib/proxysql
+    healthcheck:
+      test: "/usr/bin/mysql -h 127.0.0.1 -P ${DB_RPOXY_PORT} --user=stud --password=stud --execute \"SHOW DATABASES;\""
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - db_node_01
+      - db_node_02
+      - db_node_03
+    networks:
+      - arch-network
+    ports:
+      # Mysql Client Port
+      - 6033:${DB_RPOXY_PORT}
+      # Mysql Admin Port
+      - "6032:6032"
+
+  auth_service:
+    build:
+      context: auth_service
+      dockerfile: Dockerfile
+    container_name: auth_service
+    environment:
+      DB_HOST: proxysql #${DB_HOST}
+      DB_PORT: ${DB_RPOXY_PORT}
+      DB_LOGIN: ${DB_LOGIN}
+      DB_PASSWORD: ${DB_LOGIN}
+      DB_DATABASE: ${DB_DATABASE}
+      AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
+      MAX_SHARD: 1
+      SEQUENCE_SHARD: 2
+      CREATE_TEST_USERS: 1
+    ports:
+      - ${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}
+    networks:
+      - arch-network
+    depends_on:
+      proxysql:
+        condition: service_healthy
+
+  user_service:
+    build:
+      context: user_service
+      dockerfile: Dockerfile
+    container_name: user_service
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_RPOXY_PORT}
+      DB_LOGIN: ${DB_LOGIN}
+      DB_PASSWORD: ${DB_LOGIN}
+      DB_DATABASE: ${DB_DATABASE}
+      AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
+      AUTH_SERVICE_HOST: auth_service
+      USER_SERVICE_PORT: ${USER_SERVICE_PORT}
+      MAX_SHARD: 1
+      SEQUENCE_SHARD: 2
+    ports:
+      - ${USER_SERVICE_PORT}:${USER_SERVICE_PORT}
+    networks:
+      - arch-network
+    depends_on:
+      proxysql:
+        condition: service_healthy
+
+  # product_service:
+  #   build:
+  #     context: product_service
+  #     dockerfile: Dockerfile
+  #   container_name: product_service
+  #   environment:
+  #     DB_HOST: ${DB_HOST}
+  #     DB_PORT: ${DB_RPOXY_PORT}
+  #     DB_LOGIN: ${DB_LOGIN}
+  #     DB_PASSWORD: ${DB_LOGIN}
+  #     DB_DATABASE: ${DB_DATABASE}
+  #     AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
+  #     AUTH_SERVICE_HOST: auth_service
+  #     PRODUCT_SERVICE_PORT: ${PRODUCT_SERVICE_PORT}
+  #   ports:
+  #     - ${PRODUCT_SERVICE_PORT}:${PRODUCT_SERVICE_PORT}
+  #   networks:
+  #     - arch-network
+  #   depends_on:
+  #     proxysql:
+  #       condition: service_healthy
+
+volumes:
+  db-node-01-data:
+  db-node-02-data:
+  db-node-03-data:
+  proxysql-data:
+
+networks:
+  arch-network:
+    driver: "bridge"
+    external: false
