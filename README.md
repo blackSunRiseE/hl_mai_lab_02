@@ -33,11 +33,6 @@ docker compose up
     - Удалить свой лот [DELETE] /product
     - Удалить юзера [DELETE] /user
 
-<b>!!!ВНИМАНИЕ!!!</b>
-
-Новый пользователь не будет иметь прав админа и сможет удалять только свои записи.
-Созданные для тестов юзеры (autotest_admin, autotest_user0, autotest_user1, autotest_user2, autotest_user3) имеют права админов и могут удалять любые сущности.
-
 # Api
 Конфигурация ендпоинтов описана в ./docs/index.yaml.
 
